@@ -1,17 +1,9 @@
+FROM golang:1.21
 
-FROM golang:1.21.1
+WORKDIR /app
+COPY . .
 
+RUN go mod init goapp && go mod tidy
+RUN go build -o main .
 
-COPY . /
-
-
-WORKDIR /
-
-
-RUN go build main.go
-
-
-CMD ["./main"]
-
-
-EXPOSE 8080
+CMD ["./main"]  
