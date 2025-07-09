@@ -10,16 +10,18 @@ import (
 	"errors"
 	
 
-    "myapi/utils"
-	"myapi/models"
-	 "myapi/db"
-	 "myapi/hateoas"
+    "github.com/whosthefunkyy/go-rest-api-example/utils"
+	"github.com/whosthefunkyy/go-rest-api-example/models"
+	 "github.com/whosthefunkyy/go-rest-api-example/db"
+	 "github.com/whosthefunkyy/go-rest-api-example/hateoas"
 )
 
-
+type Handler struct {
+	DB *sql.DB
+}
 	// GET ALL USERS
-func GetUsers(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.DB.QueryContext(r.Context(),"SELECT id, name, age FROM users")
+func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.DB.QueryContext(r.Context(),"SELECT id, name, age FROM users")
 	if err != nil {
 	// Timeout
 	 if errors.Is(err, context.DeadlineExceeded) ||

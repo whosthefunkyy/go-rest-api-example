@@ -3,7 +3,7 @@ package hateoas
 
 import (
 	"fmt"
-	"myapi/models"
+	"github.com/whosthefunkyy/go-rest-api-example/models"
 )
 
 func CreateUserResponse(u models.User) map[string]interface{} {
