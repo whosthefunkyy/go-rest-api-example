@@ -20,8 +20,8 @@ func main() {
     h := &handlers.Handler{DB: db.DB}
 
     api.HandleFunc("/users", h.GetUsers).Methods("GET")
-    api.HandleFunc("/users/{id}",handlers.GetUser).Methods("GET")
-    api.HandleFunc("/users", handlers.CreateUser).Methods("POST")
+    api.HandleFunc("/users/{id}",h.GetUser).Methods("GET")
+    api.HandleFunc("/users", h.CreateUser).Methods("POST")
     api.HandleFunc("/users/{id}", handlers.UpdateUser).Methods("PUT")
     api.HandleFunc("/users/{id}",handlers.DeleteUser).Methods("DELETE")
     api.HandleFunc("/users/{id}", handlers.PatchUser).Methods("PATCH")

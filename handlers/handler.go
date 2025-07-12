@@ -48,8 +48,8 @@ func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
 w.Header().Set("Content-Type", "application/json")
 json.NewEncoder(w).Encode(users)
 }
-	// GET 1 USER by ID
-func GetUser(w http.ResponseWriter, r *http.Request) {
+	// GET One USER by ID
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -59,7 +59,7 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var u models.User
-	err = db.DB.QueryRowContext(r.Context(),"SELECT id,name,age FROM users WHERE id = $1",id).Scan(&u.ID,  &u.Name,&u.Age)
+	err = h.DB.QueryRowContext(r.Context(),"SELECT id,name,age FROM users WHERE id = $1",id).Scan(&u.ID,  &u.Name,&u.Age)
 		if err != nil {
 	// Timeout
 		if errors.Is(err, context.DeadlineExceeded) ||
@@ -81,11 +81,11 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 }  
 
 	// CREATE A NEW USER
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func(h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var u models.User
 
 	json.NewDecoder(r.Body).Decode(&u)
-	err := db.DB.QueryRowContext(r.Context(),"INSERT INTO users (name, age) VALUES ($1, $2) RETURNING id", u.Name,u.Age).Scan(&u.ID)
+	err := h.DB.QueryRowContext(r.Context(),"INSERT INTO users (name, age) VALUES ($1, $2) RETURNING id", u.Name,u.Age).Scan(&u.ID)
 		if err != nil {
 	// Timeout
 		if errors.Is(err, context.DeadlineExceeded) ||

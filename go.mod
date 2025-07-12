@@ -8,4 +8,7 @@ require (
 
 )
 
-require github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
+)
