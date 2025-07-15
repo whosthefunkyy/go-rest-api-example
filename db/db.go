@@ -30,7 +30,7 @@ func ConnectGorm() {
 	}
 }
 func AutoMigrate() {
-	err := DB.AutoMigrate(&models.User{}) // можно и другие модели
+	err := DB.AutoMigrate(&models.User{}) 
 	if err != nil {
 		log.Fatalf("migration failed: %s", err)
 	}

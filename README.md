@@ -21,6 +21,6 @@ DELETE /users/{id} — delete a user
 Language: Golang
 Router:  gorilla/mux 
 Database: PostgreSQL
-Working with DB: database/sql (or GORM/sqlc — later)
+Working with DB: GORM
 Containerization: Docker, Docker Compose
 Testing: testing, httptest (in development)
