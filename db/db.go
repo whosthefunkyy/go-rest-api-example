@@ -1,25 +1,37 @@
 package db
 
 import (
-    "database/sql"
-    _ "github.com/lib/pq"
-    "log"
+	"fmt"
+	"log"
+	"os"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"github.com/whosthefunkyy/go-rest-api-example/models"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
-func InitDB() {
-    var err error
-    connStr := "host=localhost user=artem password=password dbname=goapp_db sslmode=disable"
-    DB, err = sql.Open("postgres", connStr)
-    if err != nil {
-        log.Fatal("DB open error:", err)
-    }
+func ConnectGorm() {
 
-    err = DB.Ping()
-    if err != nil {
-        log.Fatal("DB ping failed:", err)
-    }
+	  dsn := fmt.Sprintf(
+        "host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+        os.Getenv("DB_HOST"),
+        os.Getenv("DB_PORT"),
+        os.Getenv("DB_USER"),
+        os.Getenv("DB_PASSWORD"),
+        os.Getenv("DB_NAME"),
+    )
 
-    log.Println("Database connected")
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("failed to connect to database: %s", err)
+	}
+}
+func AutoMigrate() {
+	err := DB.AutoMigrate(&models.User{}) // можно и другие модели
+	if err != nil {
+		log.Fatalf("migration failed: %s", err)
+	}
 }

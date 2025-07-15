@@ -2,259 +2,263 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
+	//"strings"
+	"log"
 	"github.com/gorilla/mux"
-	"database/sql"
+	"gorm.io/gorm"
 	"context"
-	"errors"
-	
-
-    "github.com/whosthefunkyy/go-rest-api-example/utils"
+  
 	"github.com/whosthefunkyy/go-rest-api-example/models"
-	 "github.com/whosthefunkyy/go-rest-api-example/db"
-	 "github.com/whosthefunkyy/go-rest-api-example/hateoas"
-)
+	"github.com/whosthefunkyy/go-rest-api-example/utils"
+	"github.com/whosthefunkyy/go-rest-api-example/hateoas"
+	"github.com/whosthefunkyy/go-rest-api-example/repository"
 
+)
 type Handler struct {
-	DB *sql.DB
+	Repo repository.UserRepository
 }
 	// GET ALL USERS
 func (h *Handler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.QueryContext(r.Context(),"SELECT id, name, age FROM users")
-	if err != nil {
-	// Timeout
-	 if errors.Is(err, context.DeadlineExceeded) ||
-	    errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-		utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
-		return
-}
-	// User not found
-		utils.SendError(w, "User not found", http.StatusNotFound)
-		return
+    ctx := r.Context()
 
-}
-	defer rows.Close()
-	var users []models.User
-	
-	for rows.Next() {
-		var u models.User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Age); err != nil {
-			utils.SendError(w, err.Error(), http.StatusInternalServerError)
-			return
-	}
-	users = append(users, u)
-}
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(users)
+    // Проверка отмены контекста (например, если клиент закрыл соединение)
+    select {
+    case <-ctx.Done():
+        utils.SendError(w, "Request canceled", http.StatusRequestTimeout)
+        return
+    default:
+    }
+
+    // Получение пользователей из репозитория
+    users, err := h.Repo.GetAll()
+    if err != nil {
+        log.Printf("GetUsers GetAll error: %v", err)
+        utils.SendError(w, "Database error", http.StatusInternalServerError)
+        return
+    }
+
+    // Формирование HATEOAS-ответа
+    result := make([]map[string]interface{}, 0, len(users))
+    for _, u := range users {
+        result = append(result, hateoas.CreateUserResponse(u))
+    }
+
+    // Успешный ответ
+    w.Header().Set("Content-Type", "application/json")
+    if err := json.NewEncoder(w).Encode(result); err != nil {
+        log.Printf("GetUsers response encoding error: %v", err)
+        utils.SendError(w, "Failed to encode response", http.StatusInternalServerError)
+        return
+    }
 }
 	// GET One USER by ID
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
-	
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+    ctx := r.Context()
 
-	var u models.User
-	err = h.DB.QueryRowContext(r.Context(),"SELECT id,name,age FROM users WHERE id = $1",id).Scan(&u.ID,  &u.Name,&u.Age)
-		if err != nil {
-	// Timeout
-		if errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-			http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-			return
-		}
-	// User not Found
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
-		}
-	// Any others error
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(hateoas.CreateUserResponse(u))
-}  
+    // Проверка отмены запроса
+    select {
+    case <-ctx.Done():
+        utils.SendError(w, "Request canceled", http.StatusRequestTimeout)
+        return
+    default:
+    }
+
+    // Валидация ID
+    idStr := mux.Vars(r)["id"]
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        utils.SendError(w, "Invalid ID", http.StatusBadRequest)
+        return
+    }
+
+    // Получение пользователя
+      user, err := h.Repo.GetByID(id)
+    if err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            utils.SendError(w, "User not found", http.StatusNotFound)
+        } else if ctx.Err() != nil {
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+        } else {
+            utils.SendError(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Успешный ответ
+    w.Header().Set("Content-Type", "application/json")
+    if err := json.NewEncoder(w).Encode(hateoas.CreateUserResponse(*user)); err != nil {
+        log.Printf("GetUser response encoding error: %v", err)
+        utils.SendError(w, "Failed to encode response", http.StatusInternalServerError)
+    }
+}
 
 	// CREATE A NEW USER
-func(h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var u models.User
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-	json.NewDecoder(r.Body).Decode(&u)
-	err := h.DB.QueryRowContext(r.Context(),"INSERT INTO users (name, age) VALUES ($1, $2) RETURNING id", u.Name,u.Age).Scan(&u.ID)
-		if err != nil {
-	// Timeout
-		if errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-			http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-			return
-		}
-	// User not Found
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
-		}
-	// Any others error
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+    // Проверка отмены контекста
+    select {
+    case <-ctx.Done():
+        utils.SendError(w, "Request canceled", http.StatusRequestTimeout)
+        return
+    default:
+    }
 
+    // Декодирование тела запроса
+    var user models.User
+    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+        utils.SendError(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Валидация данных
+    if user.Name == "" {
+        utils.SendError(w, "Name cannot be empty", http.StatusBadRequest)
+        return
+    }
+
+    // Создание пользователя
+    if err := h.Repo.Create(&user); err != nil {
+        log.Printf("CreateUser Create error: %v", err)
+
+        // Пример: можно сюда вставить кастомную проверку уникальности email и т.п.
+        if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+            return
+        }
+
+        utils.SendError(w, "Database error", http.StatusInternalServerError)
+        return
+    }
+
+    // Успешный ответ
     w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(hateoas.CreateUserResponse(u))
+    w.WriteHeader(http.StatusCreated)
+    if err := json.NewEncoder(w).Encode(hateoas.CreateUserResponse(user)); err != nil {
+        log.Printf("CreateUser response encoding error: %v", err)
+        utils.SendError(w, "Failed to encode response", http.StatusInternalServerError)
+    }
 }
+
 
 	// UPDATE INFO into USER
-func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id, err :=strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil {
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	var u models.User
-	json.NewDecoder(r.Body).Decode(&u)
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-	res, err := db.DB.ExecContext(r.Context(),"UPDATE users SET name= $1, age= $2 WHERE id = $3", u.Name, u.Age, id)
-	
-	if err != nil {
-	// TimeOut
-	if errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-		return
-	}
-	// Any others error
-	utils.SendError(w, err.Error(), http.StatusInternalServerError)
-	return
-}
-	// Any Affected rows
-	rows, err := res.RowsAffected()
-	if err != nil {
-	utils.SendError(w, "RowsAffected error: "+err.Error(), http.StatusInternalServerError)
-	return
-}
-	if rows == 0 {	
-		utils.SendError(w, "User not found", 404)
-		return 
-	}
-	
-	u.ID = id
+    // Проверка отмены контекста
+    select {
+    case <-ctx.Done():
+        utils.SendError(w, "Request canceled", http.StatusRequestTimeout)
+        return
+    default:
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(hateoas.CreateUserResponse(u))
+    // Валидация ID
+    idStr := mux.Vars(r)["id"]
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        utils.SendError(w, "Invalid ID", http.StatusBadRequest)
+        return
+    }
+
+    // Декодирование тела запроса
+    var user models.User
+    if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+        utils.SendError(w, "Invalid request body", http.StatusBadRequest)
+        return
+    }
+
+    // Валидация данных
+    if user.Name == "" {
+        utils.SendError(w, "Name cannot be empty", http.StatusBadRequest)
+        return
+    }
+
+    // Проверка существования пользователя
+    existingUser, err := h.Repo.GetByID(id)
+    if err != nil {
+        switch {
+        case errors.Is(err, gorm.ErrRecordNotFound):
+            utils.SendError(w, "User not found", http.StatusNotFound)
+        case errors.Is(err, context.DeadlineExceeded), errors.Is(ctx.Err(), context.DeadlineExceeded):
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+        default:
+            log.Printf("UpdateUser GetByID error: %v", err)
+            utils.SendError(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Обновление
+    user.ID = existingUser.ID
+    if err := h.Repo.Update(&user); err != nil {
+        log.Printf("UpdateUser Update error: %v", err)
+        if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+            return
+        }
+        utils.SendError(w, "Database error", http.StatusInternalServerError)
+        return
+    }
+
+    // Ответ
+    w.Header().Set("Content-Type", "application/json")
+    if err := json.NewEncoder(w).Encode(hateoas.CreateUserResponse(user)); err != nil {
+        log.Printf("UpdateUser response encoding error: %v", err)
+        utils.SendError(w, "Failed to encode response", http.StatusInternalServerError)
+    }
 }
 
 // DELETE USER
-func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(mux.Vars(r)["id"])
-	if err != nil {
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res,err := db.DB.ExecContext(r.Context(),"DELETE FROM users WHERE id = $1",id)
-	 if err != nil {
-	// Timeout
-	 if errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-		return
-	}
-	// Any others error
-	 utils.SendError(w, err.Error(), http.StatusInternalServerError)
-	 return
-	}
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		utils.SendError(w, "RowsAffected error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+    // Проверка отмены контекста
+    select {
+    case <-ctx.Done():
+        utils.SendError(w, "Request canceled", http.StatusRequestTimeout)
+        return
+    default:
+    }
 
-	
-	if rows == 0 {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+    // Валидация ID
+    idStr := mux.Vars(r)["id"]
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        utils.SendError(w, "Invalid ID", http.StatusBadRequest)
+        return
+    }
+
+    // Проверка существования пользователя
+    user, err := h.Repo.GetByID(id)
+    if err != nil {
+        switch {
+        case errors.Is(err, gorm.ErrRecordNotFound):
+            utils.SendError(w, "User not found", http.StatusNotFound)
+        case errors.Is(err, context.DeadlineExceeded), errors.Is(ctx.Err(), context.DeadlineExceeded):
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+        default:
+            log.Printf("DeleteUser GetByID error: %v", err)
+            utils.SendError(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
+
+    // Удаление
+    if err := h.Repo.Delete(int(user.ID)); err != nil {
+        log.Printf("DeleteUser Delete error: %v", err)
+        if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+            utils.SendError(w, "Request timeout", http.StatusGatewayTimeout)
+            return
+        }
+        utils.SendError(w, "Database error", http.StatusInternalServerError)
+        return
+    }
+
+    // Успешный ответ без тела
+    w.WriteHeader(http.StatusNoContent)
 }
-
-	// CHANGE USER 
-func PatchUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		utils.SendError(w, "Invalid ID", http.StatusBadRequest)
-	}
-	
-	var u models.User
-	err = db.DB.QueryRowContext(r.Context(),
-					"SELECT id,name,age FROM users WHERE id = $1",id).
-					Scan(&u.ID,&u.Name,&u.Age)
-	// Timeout
-		if errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-		http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-		return
-	}
-	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	var patchData map[string]interface{}
-		if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
-			utils.SendError(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-		for k := range patchData {
-		if k != "name" && k != "age" {
-			utils.SendError(w, "Unknown field: "+k, http.StatusBadRequest)
-			return
-		}
-	}
-		
-		if name, ok := patchData["name"].(string); ok {
-			u.Name = name
-		}
-		if age, ok := patchData["age"].(float64); ok {
-			u.Age = int(age)
-		}
-		
-		if u.Name == " " {
-			utils.SendError(w, "Name can't be empty", http.StatusBadRequest)
-			return
-		}
-		
-	res, err := db.DB.ExecContext(r.Context(),
-		`UPDATE users SET name=$1, age=$2 WHERE id=$3`,
-		u.Name, u.Age, id)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(r.Context().Err(), context.DeadlineExceeded) {
-			http.Error(w, "Request timeout", http.StatusGatewayTimeout)
-			return
-		}
-		utils.SendError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if rows, _ := res.RowsAffected(); rows == 0 {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-				
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(hateoas.CreateUserResponse(u))
-	}
-
-
-
 

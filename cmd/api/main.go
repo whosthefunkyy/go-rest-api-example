@@ -5,27 +5,38 @@ import (
     "net/http"
     "github.com/gorilla/mux"
     "time"
-
+    "github.com/joho/godotenv"
     "github.com/whosthefunkyy/go-rest-api-example/handlers"
     "github.com/whosthefunkyy/go-rest-api-example/middleware"
     "github.com/whosthefunkyy/go-rest-api-example/db"
+    "github.com/whosthefunkyy/go-rest-api-example/repository"
 )
 
 func main() {
-    db.InitDB() // db.go
-    defer db.DB.Close()
-    r := mux.NewRouter()
-    r.Use(middleware.WithTimeoutMiddleware(5 * time.Second)) 
-    api := r.PathPrefix("/api/v1").Subrouter()
-    h := &handlers.Handler{DB: db.DB}
+    err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
 
-    api.HandleFunc("/users", h.GetUsers).Methods("GET")
-    api.HandleFunc("/users/{id}",h.GetUser).Methods("GET")
-    api.HandleFunc("/users", h.CreateUser).Methods("POST")
-    api.HandleFunc("/users/{id}", handlers.UpdateUser).Methods("PUT")
-    api.HandleFunc("/users/{id}",handlers.DeleteUser).Methods("DELETE")
-    api.HandleFunc("/users/{id}", handlers.PatchUser).Methods("PATCH")
+	db.ConnectGorm()
+	db.AutoMigrate()
 
-    log.Println("Server started at :8080")
-    log.Fatal(http.ListenAndServe(":8080", api))
+	userRepo := &repository.GormUserRepository{DB: db.DB} // ✅
+
+	r := mux.NewRouter()
+	r.Use(middleware.WithTimeoutMiddleware(5 * time.Second))
+
+	h := &handlers.Handler{Repo: userRepo} // ✅
+
+	api := r.PathPrefix("/api/v1").Subrouter()
+
+	api.HandleFunc("/users", h.GetUsers).Methods("GET")
+	api.HandleFunc("/users/{id}", h.GetUser).Methods("GET")
+	api.HandleFunc("/users", h.CreateUser).Methods("POST")
+	api.HandleFunc("/users/{id}", h.UpdateUser).Methods("PUT")
+	api.HandleFunc("/users/{id}", h.DeleteUser).Methods("DELETE")
+	//api.HandleFunc("/users/{id}", h.PatchUser).Methods("PATCH")
+
+	log.Println("Server started at :8080")
+	log.Fatal(http.ListenAndServe(":8080", api))
 }
