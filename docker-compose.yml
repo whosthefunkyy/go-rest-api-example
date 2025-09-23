@@ -5,15 +5,27 @@ services:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_DB: goapp_db
-      POSTGRES_USER: artem 
-      POSTGRES_PASSWORD: password
+      - POSTGRES_USER=artem
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=goapp_db
     ports:
       - "5432:5432"
+    healthcheck: # <--- НАЧАЛО НОВОГО БЛОКА
+      test: ["CMD-SHELL", "pg_isready -U artem -d goapp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   goapp:
     build: .
     ports:
       - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=artem
+      - DB_NAME=goapp_db
+      - DB_PASSWORD=password
     depends_on:
-      - postgres
+      postgres: # <--- ИЗМЕНЕННЫЙ БЛОК
+        condition: service_healthy
