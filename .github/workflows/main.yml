@@ -8,13 +8,15 @@ env:
 on:
   push:
     branches: 
-      - master
+      - main
 jobs:
   my_ci_part:
     runs-on: ubuntu-latest
     steps:
     - name: Git clone
       uses: actions/checkout@v4
+    - name: say hello
+      run: echo "HELLO"
 
     - name: Create ZIP deployment package 
       run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} ./ -x *.git*
