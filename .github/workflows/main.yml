@@ -1,0 +1,22 @@
+name: CICD-API-PIPELINE-EB
+env: 
+  EB_PACKAGE_S3_BUCKET_NAME: "github-actions-s3-artem"
+  EB_APPLICATION_NAME: "MY-API"
+  EB_ENVIRONMENT_NAME: "MY-API-env"
+  DEPLOY_PACKAGE_NAME: my_go_api_${{ github.sha }}.zip
+  AWS_REGION_NAME: "us-east-1"
+on:
+  push:
+    branches: 
+      - master
+jobs:
+  my_ci_part:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git clone
+      uses: actions/checkout@v4
+
+    - name: Create ZIP deployment package 
+      run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} ./ -x *.git*
+      
+      
