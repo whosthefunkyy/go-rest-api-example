@@ -43,7 +43,5 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-    // В реальном приложении здесь можно проверить соединение с БД и другими сервисами.
-    // Для Load Balancer достаточно 200 OK.
     w.WriteHeader(http.StatusOK)
 }

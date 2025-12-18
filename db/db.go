@@ -12,26 +12,32 @@ import (
 
 var DB *gorm.DB
 
-func ConnectGorm() {
 
-	  dsn := fmt.Sprintf(
-        "host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-        os.Getenv("DB_HOST"),
-        os.Getenv("DB_PORT"),
-        os.Getenv("DB_USER"),
-        os.Getenv("DB_PASSWORD"),
-        os.Getenv("DB_NAME"),
-    )
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+func ConnectGorm() {
+	
+	host := getEnv("RDS_HOSTNAME", getEnv("DB_HOST", "localhost"))
+	port := getEnv("RDS_PORT", getEnv("DB_PORT", "5432"))
+	user := getEnv("RDS_USERNAME", getEnv("DB_USER", "artem"))
+	pass := getEnv("RDS_PASSWORD", getEnv("DB_PASSWORD", "password"))
+	name := getEnv("RDS_DB_NAME", getEnv("DB_NAME", "goapp_db"))
+
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, pass, name,
+	)
+
+	fmt.Printf("Connecting to host: %s, database: %s\n", host, name)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %s", err)
-	}
-}
-func AutoMigrate() {
-	err := DB.AutoMigrate(&models.User{}) 
-	if err != nil {
-		log.Fatalf("migration failed: %s", err)
 	}
 }
