@@ -18,7 +18,7 @@ jobs:
     - name: Git clone
       uses: actions/checkout@v1
 
-    - name: Create ZIP deployment package 21
+    - name: Create ZIP deployment package 21chiko
       run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} ./ -x *.git*
       
     - name: Configure AWS Credentials
