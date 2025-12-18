@@ -26,7 +26,7 @@ func ConnectGorm() {
 	port := getEnv("RDS_PORT", getEnv("DB_PORT", "5432"))
 	user := getEnv("RDS_USERNAME", getEnv("DB_USER", "artem"))
 	pass := getEnv("RDS_PASSWORD", getEnv("DB_PASSWORD", "password"))
-	name := getEnv("RDS_DB_NAME", getEnv("DB_NAME", "goapp_db"))
+	name := getEnv("RDS_DB_NAME", getEnv("DB_NAME", "ebdb"))
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

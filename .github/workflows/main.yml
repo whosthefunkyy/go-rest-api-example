@@ -1,9 +1,9 @@
 name: CICD-API-PIPELINE-EB
 env: 
   EB_PACKAGE_S3_BUCKET_NAME: "github-actions-s3-artem"
-  EB_APPLICATION_NAME: "MY-API"
-  EB_ENVIRONMENT_NAME: "MY-API-env"
-  DEPLOY_PACKAGE_NAME: my_go_api_${{ github.sha }}.zip
+  EB_APPLICATION_NAME: "GO-API"
+  EB_ENVIRONMENT_NAME: "GO-API-env"
+  DEPLOY_PACKAGE_NAME: golang-api_${{ github.sha }}.zip
   AWS_REGION_NAME: "us-east-1"
 on:
   push:
@@ -12,17 +12,24 @@ on:
 jobs:
   my_ci_part:
     runs-on: ubuntu-latest
-
-    
     steps:
     - name: Git clone
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4 # Используем свежую версию
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21' # или твоя версия
 
-    - name: Create ZIP deployment package 
-      run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} ./ -x *.git*
+    - name: Build Binary
+      # Собираем под Linux (архитектура EC2)
+      run: GOOS=linux GOARCH=amd64 go build -o application ./cmd/api/main.go
+
+    - name: Create ZIP package
+      # Теперь кладем в ZIP уже готовый бинарник + Procfile
+      run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} application Procfile
       
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4 # Тоже можно обновить
       with: 
         aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
@@ -36,11 +43,9 @@ jobs:
   my_cd_part:
     runs-on: ubuntu-latest
     needs: [my_ci_part]
-
-    
     steps:
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
+    - name: Configure AWS Credentials1
+      uses: aws-actions/configure-aws-credentials@v4
       with: 
         aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
@@ -54,7 +59,7 @@ jobs:
          --version-label "Ver-${{ github.sha }}"  \
          --description "CommitSHA-${{ github.sha }}"
 
-    - name: Deploy new ElasticBeanstalk app version   
+    - name: Deploy new ElasticBeanstalk app version 1  
       run: aws elasticbeanstalk update-environment --environment-name ${{ env.EB_ENVIRONMENT_NAME }} --version-label "Ver-${{ github.sha }}"
     - name: Happy message)
       run: echo "CD Pipeline part finished"
