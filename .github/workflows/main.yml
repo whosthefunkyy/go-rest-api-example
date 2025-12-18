@@ -1,9 +1,9 @@
 name: CICD-API-PIPELINE-EB
 env: 
   EB_PACKAGE_S3_BUCKET_NAME: "github-actions-s3-artem"
-  EB_APPLICATION_NAME: "MY-API"
-  EB_ENVIRONMENT_NAME: "MY-API-env"
-  DEPLOY_PACKAGE_NAME: my_go_api_${{ github.sha }}.zip
+  EB_APPLICATION_NAME: "GO-API"
+  EB_ENVIRONMENT_NAME: "GO-API-env"
+  DEPLOY_PACKAGE_NAME: golang-api_${{ github.sha }}.zip
   AWS_REGION_NAME: "us-east-1"
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} cmd db models Buildfile Procfile go.mod go.sum
       
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2 # Тоже можно обновить
+      uses: aws-actions/configure-aws-credentials@v4 # Тоже можно обновить
       with: 
         aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
@@ -35,11 +35,9 @@ jobs:
   my_cd_part:
     runs-on: ubuntu-latest
     needs: [my_ci_part]
-
-    
     steps:
     - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with: 
         aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
