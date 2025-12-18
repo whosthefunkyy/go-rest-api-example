@@ -7,7 +7,7 @@ services:
     environment:
       - POSTGRES_USER=artem
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=goapp_db
+      - POSTGRES_DB=ebdb
     ports:
       - "5432:5432"
     healthcheck: # <--- НАЧАЛО НОВОГО БЛОКА
@@ -24,7 +24,7 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=artem
-      - DB_NAME=goapp_db
+      - DB_NAME=ebdb
       - DB_PASSWORD=password
     depends_on:
       postgres: # <--- ИЗМЕНЕННЫЙ БЛОК
