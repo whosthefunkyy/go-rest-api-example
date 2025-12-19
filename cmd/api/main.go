@@ -22,9 +22,9 @@ func main() {
 		fmt.Fprintf(w, "API is running without DB for testing")
 	}).Methods("GET")
 
-	log.Println("Server started at :8080")
+	log.Println("Server started at :5000")
 	// Важно: порт 8080 обязателен для EB Go платформы по умолчанию
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	if err := http.ListenAndServe(":5000", r); err != nil {
 		log.Fatal(err)
 	}
 }
