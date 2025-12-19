@@ -1,47 +1,30 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
-	"github.com/whosthefunkyy/go-rest-api-example/db"
-	"github.com/whosthefunkyy/go-rest-api-example/handlers"
-	"github.com/whosthefunkyy/go-rest-api-example/middleware"
-	"github.com/whosthefunkyy/go-rest-api-example/repository"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-
-	db.ConnectGorm()
-	db.AutoMigrate()
-
-	userRepo := &repository.GormUserRepository{DB: db.DB} 
-
 	r := mux.NewRouter()
-  r.HandleFunc("/health", HealthCheckHandler).Methods("GET")
-	r.Use(middleware.WithTimeoutMiddleware(5 * time.Second))
 
-	h := &handlers.Handler{Repo: userRepo} 
+	// Наш главный эндпоинт для проверки здоровья
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
+	}).Methods("GET")
 
-	api := r.PathPrefix("/api/v1").Subrouter()
-
-	api.HandleFunc("/users", h.GetAllUsers).Methods("GET")
-	api.HandleFunc("/users/{id}", h.GetUserByID).Methods("GET")
-	api.HandleFunc("/users", h.CreateUser).Methods("POST")
-	api.HandleFunc("/users/{id}", h.UpdateUser).Methods("PUT")
-	api.HandleFunc("/users/{id}", h.DeleteUser).Methods("DELETE")
-	
+	// Простой тестовый маршрут
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "API is running without DB for testing")
+	}).Methods("GET")
 
 	log.Println("Server started at :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
-}
-func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
+	// Важно: порт 8080 обязателен для EB Go платформы по умолчанию
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Fatal(err)
+	}
 }
