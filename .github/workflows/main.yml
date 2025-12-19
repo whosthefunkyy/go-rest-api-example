@@ -26,8 +26,8 @@ jobs:
     - name: Build Binary
       run: GOOS=linux GOARCH=amd64 go build -o application ./cmd/api/main.go
 
-    - name: Create ZIP package
-      # Упаковываем ТОЛЬКО бинарник и Procfile. Никаких лишних папок!
+    - name: Create ZIP packagee
+
       run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} application Procfile
       
     - name: Configure AWS Credentials
