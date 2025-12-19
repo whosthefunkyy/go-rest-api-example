@@ -1,1 +1,1 @@
-web: chmod +x application && ./application
+web: chmod +x ./application && ./application
