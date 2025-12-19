@@ -15,6 +15,18 @@ jobs:
     steps:
     - name: Git clone
       uses: actions/checkout@v4 # Используем свежую версию
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21' # или твоя версия
+
+    - name: Build Binary
+      # Собираем под Linux (архитектура EC2)
+      run: GOOS=linux GOARCH=amd64 go build -o application ./cmd/api/main.go
+
+    - name: Create ZIP package
+      # Теперь кладем в ZIP уже готовый бинарник + Procfile
+      run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} application Procfile
 
     - name: Create ZIP deployment package
       # Мы явно перечисляем, что нам нужно, чтобы не упаковать лишний мусор
