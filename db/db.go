@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"github.com/whosthefunkyy/go-rest-api-example/models"
+	
 )
 
 var DB *gorm.DB
