@@ -15,7 +15,7 @@ jobs:
   my_ci_part:
     runs-on: ubuntu-latest
     steps:
-    - name: Git clone12
+    - name: Git clone121212
       uses: actions/checkout@v4
 
     - name: Set up Go
