@@ -1,33 +1,48 @@
-package main
+package db
 
 import (
 	"fmt"
 	"log"
-	"net/http"
+	"os"
 
-	"github.com/gorilla/mux"
-	"github.com/whosthefunkyy/go-rest-api-example/db" 
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"github.com/whosthefunkyy/go-rest-api-example/models"
 )
 
-func main() {
-	
-	db.ConnectGorm()
-	db.AutoMigrate()
+var DB *gorm.DB
 
-	r := mux.NewRouter()
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "OK")
-	}).Methods("GET")
+func ConnectGorm() {
+	host := getEnv("RDS_HOSTNAME", getEnv("DB_HOST", "localhost"))
+	port := getEnv("RDS_PORT", getEnv("DB_PORT", "5432"))
+	user := getEnv("RDS_USERNAME", getEnv("DB_USER", "artem"))
+	pass := getEnv("RDS_PASSWORD", getEnv("DB_PASSWORD", "password"))
+	name := getEnv("RDS_DB_NAME", getEnv("DB_NAME", "ebdb"))
 
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		
-		fmt.Fprintf(w, "API is running WITH Database!")
-	}).Methods("GET")
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, pass, name,
+	)
 
-	log.Println("Server started at :5000")
-	if err := http.ListenAndServe(":5000", r); err != nil {
-		log.Fatal(err)
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("failed to connect to database: %s", err)
+	}
+}
+
+
+func AutoMigrate() {
+
+	err := DB.AutoMigrate(&models.User{}) 
+	if err != nil {
+		log.Fatalf("migration failed: %s", err)
 	}
 }
