@@ -27,10 +27,6 @@ jobs:
     - name: Create ZIP package
       # Теперь кладем в ZIP уже готовый бинарник + Procfile
       run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} application Procfile
-
-    - name: Create ZIP deployment package
-      # Мы явно перечисляем, что нам нужно, чтобы не упаковать лишний мусор
-      run: zip -r ${{ env.DEPLOY_PACKAGE_NAME }} cmd db models Buildfile Procfile go.mod go.sum
       
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4 # Тоже можно обновить
