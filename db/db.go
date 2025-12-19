@@ -7,11 +7,10 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	
+	"github.com/whosthefunkyy/go-rest-api-example/models"
 )
 
 var DB *gorm.DB
-
 
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
@@ -21,7 +20,6 @@ func getEnv(key, fallback string) string {
 }
 
 func ConnectGorm() {
-	
 	host := getEnv("RDS_HOSTNAME", getEnv("DB_HOST", "localhost"))
 	port := getEnv("RDS_PORT", getEnv("DB_PORT", "5432"))
 	user := getEnv("RDS_USERNAME", getEnv("DB_USER", "artem"))
@@ -33,11 +31,18 @@ func ConnectGorm() {
 		host, port, user, pass, name,
 	)
 
-	fmt.Printf("Connecting to host: %s, database: %s\n", host, name)
-
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %s", err)
+	}
+}
+
+
+func AutoMigrate() {
+
+	err := DB.AutoMigrate(&models.User{}) 
+	if err != nil {
+		log.Fatalf("migration failed: %s", err)
 	}
 }
