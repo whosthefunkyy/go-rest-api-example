@@ -5,16 +5,16 @@ This project is a training REST API server written in Go (Golang) that implement
 ### Features
 
 - REST API with the following endpoints:
-  - `GET /users` — retrieve all users
-  - `GET /users/{id}` — retrieve a user by ID
-  - `POST /users` — create a new user
-  - `PUT /users/{id}` — update an existing user
-  - `DELETE /users/{id}` — delete a user
+  - `GET /users` - retrieve all users
+  - `GET /users/{id}` - retrieve a user by ID
+  - `POST /users` - create a new user
+  - `PUT /users/{id}` - update an existing user
+  - `DELETE /users/{id}` - delete a user
 
 - PostgreSQL integration using GORM
 - Environment-based configuration via `.env`
 - Containerized with Docker and Docker Compose
-- Tests (in progress) using `testing` and `httptest`
+
 
 ### CI/CD
 
